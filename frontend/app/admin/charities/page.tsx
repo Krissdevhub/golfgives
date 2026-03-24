@@ -128,7 +128,7 @@ export default function AdminCharitiesPage() {
                     <tr><td colSpan={6} className="text-center py-10 text-white/30">Loading...</td></tr>
                   ) : !charities?.length ? (
                     <tr><td colSpan={6} className="text-center py-10 text-white/30">No charities yet</td></tr>
-                  ) : charities.map(c => (
+                  ) : charities.map((c: Charity) => ( // Explicitly cast 'c' to 'Charity' here
                     <tr key={c.id} className="border-b border-border/50 hover:bg-bg-secondary/50 transition-colors">
                       <td className="px-5 py-4">
                         <div className="font-display font-bold text-sm">{c.name}</div>
@@ -143,6 +143,7 @@ export default function AdminCharitiesPage() {
                         </button>
                       </td>
                       <td className="px-5 py-4">
+                        {/* Using a very safe check to satisfy the production compiler */}
                         <span className={cn(c.is_active ? 'badge-green' : 'badge-red')}>
                           {c.is_active ? 'Active' : 'Inactive'}
                         </span>

@@ -4,6 +4,6 @@
   "outputDirectory": ".next",
   "env": {
     "NEXT_PUBLIC_API_URL": "fulfilling-healing-production-6a57.up.railway.app",
-    "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "@stripe_publishable_key"
+    
   }
 }

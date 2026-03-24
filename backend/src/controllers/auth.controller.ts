@@ -81,6 +81,14 @@ export async function register(req: Request, res: Response, next: NextFunction):
 
     const token = signToken(user as User);
 
+    // Set Cookie for Registration too
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: true, 
+      sameSite: 'none',
+      maxAge: 7 * 24 * 60 * 60 * 1000, 
+    });
+
     res.status(201).json({
       success: true,
       data: {
@@ -117,7 +125,6 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
       .single();
 
     if (!user) {
-      // Timing-safe: hash anyway to prevent enumeration
       await bcrypt.hash(password, 12);
       throw new AppError(401, 'Invalid email or password');
     }
@@ -132,6 +139,15 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
     }
 
     const token = signToken(user as User);
+
+    // ── CRITICAL FIX: Set Secure Cookie ────────────────────────
+    // Isse Next.js Middleware ko token mil jayega aur redirect loop band ho jayega
+    res.cookie('token', token, {
+      httpOnly: true,     // Security: Browser JS can't access it
+      secure: true,       // Production (HTTPS) pe zaroori hai
+      sameSite: 'none',   // Vercel -> Railway communication ke liye 'none' chahiye
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 Days
+    });
 
     res.json({
       success: true,

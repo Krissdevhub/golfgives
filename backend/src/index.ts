@@ -16,7 +16,7 @@ import webhookRoutes from './routes/webhook.routes';
 import { errorHandler } from './middleware/error.middleware';
 
 const app = express();
-const PORT = process.env.PORT ?? 4000;
+const PORT = Number(process.env.PORT) || 4000;
 
 // ── Security headers ──────────────────────────────────────────
 app.use(helmet());

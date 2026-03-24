@@ -11,7 +11,7 @@ export interface User {
 }
 export interface Charity {
   id: string; name: string; description: string | null; category: string | null
-  image_url: string | null; website_url: string | null; is_featured: boolean; total_donated: number
+  image_url: string | null; website_url: string | null; is_featured: boolean; total_donated: number; is_active: boolean;
 }
 export interface Subscription {
   id: string; user_id: string; plan_type: PlanType; status: SubscriptionStatus

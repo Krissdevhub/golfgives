@@ -1,3 +1,4 @@
+'use client'
 import { useEffect, useState } from 'react'
 
 export interface AuthUser {
@@ -16,7 +17,7 @@ export function getUser(): AuthUser | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = localStorage.getItem('gg_user')
-    return raw ? (JSON.parse(raw) as AuthUser) : null
+    return raw ? JSON.parse(raw) : null
   } catch {
     return null
   }
@@ -32,21 +33,25 @@ export function clearAuth(): void {
   localStorage.removeItem('gg_user')
 }
 
-export function isAdmin(user: AuthUser | null): boolean {
-  return user?.role === 'admin'
-}
-
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [mounted, setMounted] = useState(false)
-  const [loading, setLoading] = useState(true) // Naya loading state
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const savedUser = getUser()
-    setUser(savedUser)
-    setMounted(true)
-    setLoading(false) // Check complete
+    // 🔥 FIX: delay so localStorage properly read
+    setTimeout(() => {
+      const token = getToken()
+      const savedUser = getUser()
+
+      if (token && savedUser) {
+        setUser(savedUser)
+      } else {
+        setUser(null)
+      }
+
+      setLoading(false)
+    }, 100) // 👈 IMPORTANT delay
   }, [])
 
-  return { user, mounted, loading }
+  return { user, loading }
 }

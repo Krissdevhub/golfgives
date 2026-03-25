@@ -1,15 +1,17 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Trophy, Heart, BarChart2, Calendar, Plus, Trash2, TrendingUp } from 'lucide-react'
+import { Trophy, Heart, BarChart2, Plus, Trash2, TrendingUp } from 'lucide-react'
 import Navbar from '@/components/layout/Navbar'
 import api from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 import { formatCurrency, formatDate, formatMonth, getMatchLabel, getPaymentStatusBadge, cn } from '@/lib/utils'
-import type { DashboardData, GolfScore, WinnerPayout } from '@/types'
+import type { DashboardData, WinnerPayout } from '@/types'
 
 const scoreSchema = z.object({
   score:     z.number({ invalid_type_error: 'Enter a number' }).int().min(1).max(45),
@@ -18,15 +20,26 @@ const scoreSchema = z.object({
 type ScoreForm = z.infer<typeof scoreSchema>
 
 export default function DashboardPage() {
-  const qc = useQueryClient()
-  const today = new Date().toISOString().split('T')[0]
+  const router = useRouter()
+  const qc     = useQueryClient()
+  const today  = new Date().toISOString().split('T')[0]
 
+  // ── Auth guard ────────────────────────────────────────────
+  const { user, mounted } = useAuth()
+
+  useEffect(() => {
+    if (!mounted) return
+    if (!user) router.replace('/login')
+  }, [user, mounted, router])
+
+  // ── Data fetch — only when authenticated ─────────────────
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ['dashboard'],
     queryFn: async () => {
       const res = await api.get('/api/users/dashboard')
       return res.data.data
     },
+    enabled: mounted && !!user,   // ← key fix: don't fetch until auth confirmed
   })
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ScoreForm>({
@@ -55,22 +68,24 @@ export default function DashboardPage() {
     },
   })
 
-  if (isLoading) {
+  // ── Show loading while auth or data is pending ────────────
+  if (!mounted || !user || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-white/40 font-display">Loading dashboard...</div>
+      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
+        <div className="text-white/30 font-display text-sm">
+          {!mounted || !user ? 'Verifying access...' : 'Loading dashboard...'}
+        </div>
       </div>
     )
   }
 
   if (!data) return null
 
-  const { user, subscription, scores, draw_entries, payouts, stats } = data
-  const latestDraw = draw_entries[0]
+  const { subscription, scores, draw_entries, payouts, stats } = data
+  const latestDraw  = draw_entries[0]
   const drawNumbers = scores.slice(0, 5).map(s => s.score)
 
-  // Countdown to next draw (last day of month)
-  const now = new Date()
+  const now     = new Date()
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
   const daysLeft = Math.ceil((lastDay.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
@@ -87,7 +102,9 @@ export default function DashboardPage() {
                 Welcome back, {user.full_name.split(' ')[0]} 👋
               </h1>
               <p className="text-white/50 text-sm mt-1">
-                {subscription ? `${subscription.plan_type === 'monthly' ? 'Monthly' : 'Yearly'} Plan · Renews ${subscription.current_period_end ? formatDate(subscription.current_period_end) : '—'}` : 'No active subscription'}
+                {subscription
+                  ? `${subscription.plan_type === 'monthly' ? 'Monthly' : 'Yearly'} Plan · Renews ${subscription.current_period_end ? formatDate(subscription.current_period_end) : '—'}`
+                  : 'No active subscription'}
               </p>
             </div>
             {subscription?.status === 'active' && (
@@ -101,10 +118,10 @@ export default function DashboardPage() {
           {/* Stats row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {[
-              { icon: Trophy,    label: 'Total Winnings',   value: formatCurrency(stats.total_won), color: 'text-gold'   },
-              { icon: Heart,     label: 'Charity Donated',  value: formatCurrency((subscription?.amount_pence ?? 0) / 100 * (subscription?.charity_percentage ?? 10) / 100 * 6), color: 'text-pink-400' },
-              { icon: BarChart2, label: 'Draws Entered',    value: String(stats.draws_entered),   color: 'text-indigo-400' },
-              { icon: TrendingUp,label: 'Avg Score',        value: String(stats.avg_score) + ' pts', color: 'text-accent' },
+              { icon: Trophy,     label: 'Total Winnings',  value: formatCurrency(stats.total_won),                                                                                          color: 'text-gold'        },
+              { icon: Heart,      label: 'Charity Donated', value: formatCurrency((subscription?.amount_pence ?? 0) / 100 * (subscription?.charity_percentage ?? 10) / 100 * 6),            color: 'text-pink-400'    },
+              { icon: BarChart2,  label: 'Draws Entered',   value: String(stats.draws_entered),                                                                                              color: 'text-indigo-400'  },
+              { icon: TrendingUp, label: 'Avg Score',       value: stats.avg_score + ' pts',                                                                                                 color: 'text-accent'      },
             ].map(s => (
               <div key={s.label} className="card p-5">
                 <div className="flex items-center gap-2 mb-3">
@@ -119,12 +136,10 @@ export default function DashboardPage() {
           {/* Main grid */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
-            {/* ── Scores panel (3 cols) ── */}
+            {/* ── Scores panel ── */}
             <div className="lg:col-span-3 space-y-6">
               <div className="card p-6">
                 <h2 className="font-display font-bold text-base mb-5">Your Scores (Last 5)</h2>
-
-                {/* Score list */}
                 <div className="space-y-2 mb-5">
                   {scores.length === 0 ? (
                     <p className="text-white/30 text-sm py-4 text-center">No scores yet. Add your first score below.</p>
@@ -133,7 +148,6 @@ export default function DashboardPage() {
                       <div key={s.id} className="flex items-center gap-3 bg-bg-tertiary rounded-lg px-4 py-3">
                         <span className="text-xs text-white/30 font-display font-bold w-5">{i + 1}</span>
                         <span className="text-sm text-white/50 flex-1">{formatDate(s.played_on)}</span>
-                        {/* Score bar */}
                         <div className="flex-1 max-w-[80px] h-1 bg-bg-elevated rounded-full overflow-hidden">
                           <div className="h-full bg-accent rounded-full" style={{ width: `${(s.score / 45) * 100}%` }} />
                         </div>
@@ -148,9 +162,7 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* Add score form */}
-                <form onSubmit={handleSubmit(d => addScoreMutation.mutate(d))}
-                  className="flex gap-2">
+                <form onSubmit={handleSubmit(d => addScoreMutation.mutate(d))} className="flex gap-2">
                   <div className="flex-1">
                     <input
                       {...register('score', { valueAsNumber: true })}
@@ -199,7 +211,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* ── Right col (2 cols) ── */}
+            {/* ── Right col ── */}
             <div className="lg:col-span-2 space-y-6">
 
               {/* Charity card */}
@@ -208,9 +220,7 @@ export default function DashboardPage() {
                 {subscription?.charity ? (
                   <>
                     <div className="flex items-center gap-3 bg-bg-tertiary rounded-lg p-3 mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-bg-elevated flex items-center justify-center text-xl">
-                        🌍
-                      </div>
+                      <div className="w-10 h-10 rounded-lg bg-bg-elevated flex items-center justify-center text-xl">🌍</div>
                       <div>
                         <div className="font-display font-bold text-sm">{subscription.charity.name}</div>
                         <div className="text-xs text-white/40">{subscription.charity.category}</div>
@@ -240,7 +250,6 @@ export default function DashboardPage() {
                   <div className="font-display font-extrabold text-5xl text-gold tracking-tight">{daysLeft}</div>
                   <div className="text-xs text-white/40 mt-1">days until next draw</div>
                 </div>
-
                 <div className="mb-4">
                   <p className="text-xs text-white/40 text-center mb-3">Your draw numbers (from your scores)</p>
                   <div className="flex gap-2 justify-center flex-wrap">
@@ -253,8 +262,6 @@ export default function DashboardPage() {
                     )}
                   </div>
                 </div>
-
-                {/* Last draw result */}
                 {latestDraw?.draw?.status === 'published' && (
                   <div className="bg-bg-tertiary rounded-lg p-3 mt-3">
                     <p className="text-xs text-white/40 mb-2">Last draw — {formatMonth(latestDraw.draw.draw_month)}</p>

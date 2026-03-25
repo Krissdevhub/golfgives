@@ -18,9 +18,14 @@ api.interceptors.response.use(
   (res) => res,
   (error: AxiosError) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('gg_token')
-      localStorage.removeItem('gg_user')
-      window.location.href = '/login'
+      const isLoginPage = window.location.pathname === '/login'
+      
+      // Sirf tab redirect karo agar hum login page pe NAHI hain
+      if (!isLoginPage) {
+        localStorage.removeItem('gg_token')
+        localStorage.removeItem('gg_user')
+        window.location.replace('/login') // replace better hota hai href se navigation history ke liye
+      }
     }
     return Promise.reject(error)
   },

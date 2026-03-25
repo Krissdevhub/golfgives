@@ -26,7 +26,8 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const res = await api.post('/api/auth/login', data)
-      const { token, user } = res.data.data
+      const { token, user } = res.data
+      console.log("FULL RESPONSE:", res.data)
 
       // 🔥 FIX: force सही save
       localStorage.setItem("gg_token", token)

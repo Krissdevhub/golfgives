@@ -39,11 +39,14 @@ export function isAdmin(user: AuthUser | null): boolean {
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [loading, setLoading] = useState(true) // Naya loading state
 
   useEffect(() => {
-    setUser(getUser())
+    const savedUser = getUser()
+    setUser(savedUser)
     setMounted(true)
+    setLoading(false) // Check complete
   }, [])
 
-  return { user, mounted }
+  return { user, mounted, loading }
 }

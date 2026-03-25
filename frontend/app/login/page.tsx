@@ -26,16 +26,24 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const res = await api.post('/api/auth/login', data)
-      const { token, user } = res.data
+
+      // ✅ FIX: correct extraction
+      const { token, user } = res.data.data
+
       console.log("FULL RESPONSE:", res.data)
 
-      // 🔥 FIX: force सही save
+      // ✅ SAFE SAVE
+      if (!token || !user) {
+        toast.error("Login response invalid ❌")
+        return
+      }
+
       localStorage.setItem("gg_token", token)
       localStorage.setItem("gg_user", JSON.stringify(user))
 
       toast.success(`Welcome back, ${user.full_name.split(' ')[0]}!`)
 
-      // 🔥 FIX: hard redirect (no loop)
+      // ✅ redirect
       window.location.href = user.role === 'admin' ? '/admin' : '/dashboard'
 
     } catch (err: unknown) {

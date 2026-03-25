@@ -24,25 +24,25 @@ export default function DashboardPage() {
   const qc     = useQueryClient()
   const today  = new Date().toISOString().split('T')[0]
 
-  // ── Auth guard ────────────────────────────────────────────
+  // ✅ FIXED AUTH
   const { user, loading } = useAuth()
 
- useEffect(() => {
-  if (loading) return
+  useEffect(() => {
+    if (loading) return
 
-  if (!user) {
-    router.replace('/login')
-  }
-}, [user, loading, router])
+    if (!user) {
+      router.replace('/login')
+    }
+  }, [user, loading, router])
 
-  // ── Data fetch — only when authenticated ─────────────────
+  // ✅ fetch only after auth ready
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ['dashboard'],
     queryFn: async () => {
       const res = await api.get('/api/users/dashboard')
       return res.data.data
     },
-    enabled: mounted && !!user,   // ← key fix: don't fetch until auth confirmed
+    enabled: !loading && !!user,
   })
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ScoreForm>({
@@ -71,25 +71,19 @@ export default function DashboardPage() {
     },
   })
 
-  // ── Show loading while auth or data is pending ────────────
+  // ✅ FIXED LOADING STATE (NO REDIRECT BUG)
   if (loading || isLoading) {
-  return (
-    <div className="min-h-screen bg-bg-primary flex items-center justify-center">
-      <div className="text-white/30 font-display text-sm">
-        Loading dashboard...
-      </div>
-    </div>
-  )
-} {
     return (
       <div className="min-h-screen bg-bg-primary flex items-center justify-center">
         <div className="text-white/30 font-display text-sm">
-          {!mounted || !user ? 'Verifying access...' : 'Loading dashboard...'}
+          Loading dashboard...
         </div>
       </div>
     )
   }
 
+  // 🔥 IMPORTANT: double safety
+  if (!user) return null
   if (!data) return null
 
   const { subscription, scores, draw_entries, payouts, stats } = data
@@ -106,7 +100,6 @@ export default function DashboardPage() {
       <main className="pt-16 min-h-screen">
         <div className="max-w-6xl mx-auto px-6 py-10">
 
-          {/* Header */}
           <div className="flex items-start justify-between mb-8">
             <div>
               <h1 className="font-display font-extrabold text-3xl tracking-tight">

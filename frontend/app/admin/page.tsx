@@ -1,24 +1,28 @@
 'use client'
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { Users, Trophy, Heart, AlertCircle, TrendingUp, ChevronRight } from 'lucide-react'
 import Navbar from '@/components/layout/Navbar'
 import api from '@/lib/api'
-import { useAuth } from '@/lib/auth'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, cn } from '@/lib/utils'
 import type { AdminStats } from '@/types'
 
+// 🔥 ADDED
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+
 export default function AdminPage() {
-  const router = useRouter()
-  const { user, mounted } = useAuth()
+
+  // 🔥 ADDED
+  const router = useRouter();
 
   useEffect(() => {
-    if (!mounted) return
-    if (!user) { router.replace('/login'); return }
-    if (user.role !== 'admin') router.replace('/dashboard')
-  }, [user, mounted, router])
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+    if (!user || user.role !== "admin") {
+      router.push("/login");
+    }
+  }, [router]);
 
   const { data: stats, isLoading } = useQuery<AdminStats>({
     queryKey: ['admin-stats'],
@@ -26,29 +30,20 @@ export default function AdminPage() {
       const res = await api.get('/api/admin/stats')
       return res.data.data
     },
-    enabled: mounted && user?.role === 'admin',
   })
 
-  if (!mounted || !user || user.role !== 'admin') {
-    return (
-      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
-        <div className="text-white/30 font-display text-sm">Verifying access...</div>
-      </div>
-    )
-  }
-
   const cards = stats ? [
-    { icon: Users,       label: 'Total Subscribers',  value: stats.active_subscribers.toLocaleString(), sub: `${stats.total_users} total accounts`,  color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
-    { icon: Trophy,      label: 'Monthly Prize Pool', value: formatCurrency(stats.monthly_prize_pool),   sub: 'Active this draw cycle',                color: 'text-gold',       bg: 'bg-gold/10'        },
-    { icon: Heart,       label: 'Total Donated',      value: formatCurrency(stats.total_charity_donated),sub: 'All time charity contributions',        color: 'text-pink-400',   bg: 'bg-pink-500/10'    },
-    { icon: AlertCircle, label: 'Pending Payouts',    value: String(stats.pending_payouts),              sub: 'Winners awaiting verification',         color: 'text-red-400',    bg: 'bg-red-500/10'     },
+    { icon: Users,       label: 'Total Subscribers',   value: stats.active_subscribers.toLocaleString(), sub: `${stats.total_users} total accounts`,          color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+    { icon: Trophy,      label: 'Monthly Prize Pool',  value: formatCurrency(stats.monthly_prize_pool),   sub: 'Active this draw cycle',                        color: 'text-gold',       bg: 'bg-gold/10'        },
+    { icon: Heart,       label: 'Total Donated',       value: formatCurrency(stats.total_charity_donated),sub: 'All time charity contributions',                color: 'text-pink-400',   bg: 'bg-pink-500/10'    },
+    { icon: AlertCircle, label: 'Pending Payouts',     value: String(stats.pending_payouts),              sub: 'Winners awaiting verification',                 color: 'text-red-400',    bg: 'bg-red-500/10'     },
   ] : []
 
   const navItems = [
-    { href: '/admin/users',     label: 'User Management',   desc: 'View and manage all subscribers',        icon: Users      },
-    { href: '/admin/draws',     label: 'Draw Engine',       desc: 'Configure, simulate, and publish draws', icon: Trophy     },
-    { href: '/admin/charities', label: 'Charity Directory', desc: 'Manage listed charities and content',    icon: Heart      },
-    { href: '/admin/winners',   label: 'Winners & Payouts', desc: 'Verify submissions and track payments',  icon: TrendingUp },
+    { href: '/admin/users',     label: 'User Management',      desc: 'View and manage all subscribers',        icon: Users   },
+    { href: '/admin/draws',     label: 'Draw Engine',          desc: 'Configure, simulate, and publish draws', icon: Trophy  },
+    { href: '/admin/charities', label: 'Charity Directory',    desc: 'Manage listed charities and content',    icon: Heart   },
+    { href: '/admin/winners',   label: 'Winners & Payouts',    desc: 'Verify submissions and mark payments',   icon: TrendingUp },
   ]
 
   return (
@@ -56,7 +51,6 @@ export default function AdminPage() {
       <Navbar />
       <main className="pt-16 min-h-screen">
         <div className="max-w-6xl mx-auto px-6 py-10">
-
           <div className="mb-8">
             <h1 className="font-display font-extrabold text-3xl tracking-tight">Admin Dashboard</h1>
             <p className="text-white/50 text-sm mt-1">GolfGives Platform Control Centre</p>

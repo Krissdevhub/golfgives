@@ -6,86 +6,79 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
-import axios from 'axios' // 🔥 api hata diya direct axios use
+import api from '@/lib/api'
 
 const schema = z.object({
-  email: z.string().email('Invalid email'),
+  email:    z.string().email('Invalid email'),
   password: z.string().min(1, 'Password required'),
 })
-
 type FormData = z.infer<typeof schema>
 
 export default function LoginPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   })
 
   async function onSubmit(data: FormData) {
     setLoading(true)
-
     try {
-      const res = await axios.post(
-        'http://localhost:4000/api/auth/login', // 🔥 apna backend URL dal
-        data,
-        {
-          headers: { 'Content-Type': 'application/json' },
-        }
-      )
-
+      const res = await api.post('/api/auth/login', data)
+      const { token, user } = res.data
       console.log("FULL RESPONSE:", res.data)
 
-      // 🔥 SAFE EXTRACTION (har case cover)
-      const token = res.data?.token || res.data?.data?.token
-      const user = res.data?.user || res.data?.data?.user
+      // 🔥 FIX: force सही save
+      localStorage.setItem("gg_token", token)
+      localStorage.setItem("gg_user", JSON.stringify(user))
 
-      if (!token) {
-        toast.error("Token nahi mila backend se ❌")
-        console.log("ERROR RESPONSE:", res.data)
-        return
-      }
+      toast.success(`Welcome back, ${user.full_name.split(' ')[0]}!`)
 
-      // 🔥 FORCE SAVE
-      localStorage.setItem('gg_token', token)
-      localStorage.setItem('gg_user', JSON.stringify(user))
+      // 🔥 FIX: hard redirect (no loop)
+      window.location.href = user.role === 'admin' ? '/admin' : '/dashboard'
 
-      console.log("SAVED TOKEN:", localStorage.getItem('gg_token'))
-
-      toast.success(`Welcome ${user?.full_name || 'User'} 🎉`)
-
-      // 🔥 delay so storage pakka ho jaye
-      setTimeout(() => {
-        window.location.href =
-          user?.role === 'admin' ? '/admin' : '/dashboard'
-      }, 300)
-
-    } catch (err: any) {
-      console.log("LOGIN ERROR:", err?.response?.data || err)
-      toast.error(err?.response?.data?.message || 'Login failed')
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Login failed'
+      toast.error(msg)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 w-80">
-        <input {...register('email')} placeholder="Email" />
-        <input {...register('password')} type="password" placeholder="Password" />
+    <div className="min-h-screen bg-bg-primary flex items-center justify-center px-4 py-20">
+      <div className="w-full max-w-md">
+        <Link href="/" className="font-display font-extrabold text-2xl tracking-tight block text-center mb-10">
+          Golf<span className="text-accent">Gives</span>
+        </Link>
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Loading...' : 'Login'}
-        </button>
+        <div className="card p-8">
+          <h1 className="font-display font-extrabold text-2xl tracking-tight mb-1">Welcome back</h1>
+          <p className="text-white/50 text-sm mb-8">Sign in to your GolfGives account</p>
 
-        {errors.email && <p>{errors.email.message}</p>}
-        {errors.password && <p>{errors.password.message}</p>}
-      </form>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <div>
+              <label className="block text-xs font-display font-semibold text-white/50 uppercase tracking-widest mb-2">Email</label>
+              <input {...register('email')} type="email" placeholder="you@example.com" className="input" />
+              {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
+            </div>
+            <div>
+              <label className="block text-xs font-display font-semibold text-white/50 uppercase tracking-widest mb-2">Password</label>
+              <input {...register('password')} type="password" placeholder="••••••••" className="input" />
+              {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password.message}</p>}
+            </div>
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 text-base">
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
+
+          <p className="text-center text-sm text-white/40 mt-6">
+            Don&apos;t have an account?{' '}
+            <Link href="/signup" className="text-accent hover:underline font-semibold">Sign Up</Link>
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

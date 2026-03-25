@@ -25,12 +25,15 @@ export default function DashboardPage() {
   const today  = new Date().toISOString().split('T')[0]
 
   // ── Auth guard ────────────────────────────────────────────
-  const { user, mounted } = useAuth()
+  const { user, loading } = useAuth()
 
-  useEffect(() => {
-    if (!mounted) return
-    if (!user) router.replace('/login')
-  }, [user, mounted, router])
+ useEffect(() => {
+  if (loading) return
+
+  if (!user) {
+    router.replace('/login')
+  }
+}, [user, loading, router])
 
   // ── Data fetch — only when authenticated ─────────────────
   const { data, isLoading } = useQuery<DashboardData>({
@@ -69,7 +72,15 @@ export default function DashboardPage() {
   })
 
   // ── Show loading while auth or data is pending ────────────
-  if (!mounted || !user || isLoading) {
+  if (loading || isLoading) {
+  return (
+    <div className="min-h-screen bg-bg-primary flex items-center justify-center">
+      <div className="text-white/30 font-display text-sm">
+        Loading dashboard...
+      </div>
+    </div>
+  )
+} {
     return (
       <div className="min-h-screen bg-bg-primary flex items-center justify-center">
         <div className="text-white/30 font-display text-sm">

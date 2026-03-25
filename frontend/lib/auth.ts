@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 export interface AuthUser {
   id: string
   email: string
@@ -32,4 +34,16 @@ export function clearAuth(): void {
 
 export function isAdmin(user: AuthUser | null): boolean {
   return user?.role === 'admin'
+}
+
+export function useAuth() {
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setUser(getUser())
+    setMounted(true)
+  }, [])
+
+  return { user, mounted }
 }

@@ -17,7 +17,7 @@ export default function AdminPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const user = JSON.parse(localStorage.getItem("gg_user") || "null");
 
     if (!user || user.role !== "admin") {
       router.push("/login");
